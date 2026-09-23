@@ -1,2 +1,2 @@
 hello sandbox
-greeting: hello
+greeting = hello
