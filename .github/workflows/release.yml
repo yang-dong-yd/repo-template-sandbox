@@ -30,3 +30,38 @@ jobs:
   release:
     # Pin to a moving major tag (`@v1`), or to a commit SHA for maximum safety.
     uses: yang-dong-yd/repo-template/.github/workflows/release.yml@v1
+
+  # Simulated: this sandbox has no registry credentials, so publishing is faked.
+  # The point is to prove the job runs with the right version and is skipped when
+  # nothing was released.
+  publish:
+    needs: release
+    if: needs.release.outputs.new_tag != ''
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.release.outputs.new_tag }}
+    steps:
+      - name: Simulate publishing
+        run: echo "would publish version ${VERSION#v} to a registry"
+
+  package:
+    needs: release
+    if: needs.release.outputs.new_tag != ''
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.release.outputs.new_tag }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      - name: Build artifacts
+        run: |
+          mkdir -p dist
+          tar -czf "dist/sandbox-${VERSION#v}.tar.gz" app.txt test.sh
+      - name: Attach artifacts to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$VERSION" dist/* --clobber
